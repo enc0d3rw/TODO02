@@ -99,6 +99,14 @@ html {
   background-position: center 20%;
 }
 
+.category-tasks-count {
+    border-radius: 10px;
+    font: normal 15px serif;
+    padding: 1px 10px;
+    background-color: rgba(0, 0, 0, 0.7);
+    margin-left: 5px;
+}
+
 main {
   flex-basis: 100%;
   background-color: #f8f8f8;
