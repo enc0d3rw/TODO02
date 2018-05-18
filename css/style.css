@@ -260,14 +260,14 @@ main {
     margin-left: -250px;
 }
 
-.add-task-modal {
+.task-modal {
     background-color: #fff;
     width: 500px;
     border-radius: 5px;
     box-shadow: 1px 1px 30px 3px #000000;
 }
 
-.add-task-modal h2 {
+.task-modal-title {
   text-align: center;
   font: bold 24px serif;
   padding: 20px 0;
@@ -306,7 +306,7 @@ main {
   text-align: center;
 }
 
-.task-submit {
+.task-modal-submit {
   background-color: #0a1e5f;
   padding: 15px 25px;
   color: #ffffff;
@@ -318,7 +318,7 @@ main {
   cursor: pointer;
 }
 
-.task-submit:hover {
+.task-modal-submit:hover {
   background-color: #000000;
 }
 
