@@ -12,10 +12,10 @@ var tasksController = (function () {
     this.description = description;
   };
 
-  var Done = function (id, title, description) {
+  var Done = function (id, element, oldType) {
     this.id = id;
-    this.title = title;
-    this.description = description;
+    this.element = element;
+    this.oldType = oldType;
   };
 
   // Записывает данные в localStorage
@@ -63,7 +63,12 @@ var tasksController = (function () {
             return element;
           }
         });
-        return el[0];
+
+        if (type === 'done') {
+          return el[0].element;
+        } else {
+          return el[0];
+        }
       }
     },
 
@@ -82,8 +87,6 @@ var tasksController = (function () {
           newItem = new New(id, tit, des);
         } else if(type === 'inprogress') {
           newItem = new Inprogress(id, tit, des);
-        } else if (type === 'done') {
-          newItem = new Done(id, tit, des);
         }
 
         data.allItems[type].push(newItem);
@@ -105,6 +108,10 @@ var tasksController = (function () {
       if (index !== -1) {
         data.allItems[type].map(function (element) {
           if (element.id === index) {
+            if (type === 'done') {
+              element.element.title = tit;
+              element.element.description = des;
+            }
             element.title = tit;
             element.description = des;
           }
@@ -137,19 +144,48 @@ var tasksController = (function () {
         setDataOnLocalStorage(data);
     },
 
-    setDoneItem: function (type, id) {
-      var ids, index, curElement;
+    setDoneItem: function (type, idElem) {
+      var newItem, newId, ids, index, curElement;
+
+      // Генеруем уникальный ID
+      if (data.allItems['done'].length > 0) {
+        newId = data.allItems['done'][data.allItems['done'].length - 1].id + 1;
+      } else {
+        newId = 0;
+      }
+
       ids = data.allItems[type].map(function (current) {
         return current.id;
       });
 
-      index = ids.indexOf(id);
+      index = ids.indexOf(idElem);
 
       if (index !== -1) {
         curElement = data.allItems[type].splice(index, 1);
-        data.allItems['done'].push(curElement[0]);
+
+
+        newItem = new Done(newId, curElement[0], type);
+        data.allItems['done'].push(newItem);
         data.totals[type] = data.allItems[type].length;
         data.totals['done'] = data.allItems['done'].length;
+        setDataOnLocalStorage(data);
+      }
+    },
+
+    unsetDoneItem: function (type, idDone) {
+      var ids, index, elem;
+      ids = data.allItems[type].map(function (current) {
+        return current.id;
+      });
+
+      index = ids.indexOf(idDone);
+
+      if (index !== -1) {
+        elem = data.allItems[type].splice(index, 1);
+        elem = elem[0];
+        data.allItems[elem.oldType].push(elem.element);
+        data.totals[type] = data.allItems[type].length;
+        data.totals[elem.oldType] = data.allItems[elem.oldType].length;
         setDataOnLocalStorage(data);
       }
     },
@@ -208,7 +244,7 @@ var UIController = (function () {
   var renderListItem = function (obj, type) {
     var html, newHtml, htmlStatic;
 
-    htmlStatic = '<div class="list-item-title-box"><button class="btn-done" type="button" name="dragable" value="done"></button><p class="list-item-title">%title%</p><div class="list-btn"><button class="btn-edit" type="button" name="btn-edit" value="edit">Edit</button><button class="btn-remove" type="button" name="btn-remove" value="remove">Delete</button></div></div><p class="list-item-description hidden">%description%</p></li>';
+    htmlStatic = '<div class="list-item-title-box"><button class="btn-done" type="button" name="done" value="done"></button><p class="list-item-title">%title%</p><div class="list-btn"><button class="btn-edit" type="button" name="btn-edit" value="edit">Edit</button><button class="btn-remove" type="button" name="btn-remove" value="remove">Delete</button></div></div><p class="list-item-description hidden">%description%</p></li>';
 
     if (type === 'new') {
       html = '<li class="list-item status-new" id="new-%id%">' + htmlStatic;
@@ -222,7 +258,7 @@ var UIController = (function () {
     newHtml = newHtml.replace('%title%', obj.title);
     newHtml = newHtml.replace('%description%', obj.description);
 
-    document.querySelector(DOMstrings.list).insertAdjacentHTML('beforeend', newHtml);
+    document.querySelector(DOMstrings.list).insertAdjacentHTML('afterbegin', newHtml);
   };
 
   return {
@@ -348,6 +384,7 @@ var controller = (function (tasksCtrl, UICtrl) {
     });
 
     document.querySelector(DOM.list).addEventListener('click', ctrlSetDoneItem);
+    document.querySelector(DOM.list).addEventListener('click', ctrlUnsetDoneItem);
     document.querySelector(DOM.list).addEventListener('click', showDescription);
 
     document.querySelector(DOM.categoriesNew).addEventListener('click', function () {
@@ -388,12 +425,42 @@ var controller = (function (tasksCtrl, UICtrl) {
   }
 
   var ctrlRenderTasks = function () {
-    var data, category;
+    var data, category, categoryDone, doneId, newElem, i;
+    categoryDone = [];
+    doneId = [];
 
     data = tasksCtrl.getData();
     category = data.currentCat;
 
-    UICtrl.renderItems(data.allItems[category], category);
+    if (category === 'done') {
+      if (data.allItems['done'].length > 0) {
+        for (i = 0; i < data.allItems['done'].length; i++) {
+          categoryDone.push(data.allItems['done'][i].element);
+          doneId.push(data.allItems['done'][i].id)
+        }
+
+        for (i = 0; i < categoryDone.length; i++) {
+          categoryDone[i].id = doneId[i];
+        }
+
+        UICtrl.renderItems(categoryDone, 'done');
+      }
+
+
+      /*
+      categoryDone = data.allItems['done'].map(function (current) {
+        return current.element;
+      });
+
+      doneId = data.allItems['done'].map(function (current) {
+        return current.id;
+      });
+      */
+
+
+    } else {
+      UICtrl.renderItems(data.allItems[category], category);
+    }
     ctrlUpdateCount();
 
   };
@@ -458,14 +525,17 @@ var controller = (function (tasksCtrl, UICtrl) {
 
   // setDoneItem: function (type, id)
   var ctrlSetDoneItem = function (event) {
-    var doneBtn, isDoneBtn;
+    var item, itemId, itemStatus, doneBtn, isDoneBtn;
 
     doneBtn = event.target;
 
     if (doneBtn.value === 'done') {
-      itemId = event.target.parentNode.parentNode.id;
+      item = event.target.parentNode.parentNode;
+      itemId = item.id;
+      itemStatus = item.classList.contains('status-done');
 
-      if (itemId) {
+
+      if (itemId && !itemStatus) {
         splitId = itemId.split('-');
         type = splitId[0];
         id = parseInt(splitId[1]);
@@ -476,6 +546,30 @@ var controller = (function (tasksCtrl, UICtrl) {
       }
     }
   };
+
+  //
+  var ctrlUnsetDoneItem = function (event) {
+    var item, itemId, itemStatus, doneBtn, isDoneBtn;
+
+    doneBtn = event.target;
+
+    if (doneBtn.value === 'done') {
+      item = event.target.parentNode.parentNode;
+      itemId = item.id;
+      itemStatus = item.classList.contains('status-done');
+
+
+      if (itemId && itemStatus) {
+        splitId = itemId.split('-');
+        type = splitId[0];
+        id = parseInt(splitId[1]);
+
+        tasksCtrl.unsetDoneItem(type, id);
+        ctrlRenderTasks();
+        ctrlUpdateCount();
+      }
+    }
+  }
 
   // Показывает окно с данными для редактирования
   var showEditModal = function (event) {
