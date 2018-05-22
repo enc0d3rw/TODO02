@@ -2,7 +2,7 @@
 var controller = (function (tasksCtrl, UICtrl) {
   // Инициализация слушателей
   var setupEventListeners = function () {
-    var DOM = UICtrl.getDOMstrings();
+    var DOM = UICtrl.getSelectors();
 
     document.querySelector(DOM.addBtn).addEventListener('click', function () {
       UICtrl.showModal('add');
@@ -36,6 +36,51 @@ var controller = (function (tasksCtrl, UICtrl) {
     document.querySelector(DOM.list).addEventListener('click', showEditModal);
     document.querySelector(DOM.taskModalSubmit).addEventListener('click', ctrlEditItem);
     document.querySelector(DOM.list).addEventListener('click', ctrlDeleteItem);
+
+    document.querySelector(DOM.list).addEventListener('mousedown', function () {
+      var draggable, listItems;
+      draggable = document.querySelectorAll(DOM.listItem);
+
+      listItems = Array.prototype.slice.call(draggable);
+
+      listItems.forEach(function (current) {
+        current.addEventListener('dragstart', function (event) {
+          event.dataTransfer.setData('itemID', event.target.id);
+        });
+      });
+    });
+
+    document.querySelector(DOM.categories).addEventListener('dragover', function (event) {
+      event.preventDefault();
+    });
+    document.querySelector(DOM.categories).addEventListener('drop', ctrlChangeItemCategory);
+  };
+
+  // Меняет категорию задачи при помощи Drag and Drop
+  var ctrlChangeItemCategory = function (event) {
+    var itemID, category, carvedItem;
+    event.preventDefault();
+
+    category = event.target.id;
+    itemID = event.dataTransfer.getData('itemID');
+
+    if (itemID && category) {
+      splitId = itemID.split('-');
+      type = splitId[0];
+      id = parseInt(splitId[1]);
+
+      if (type && type !== category && category === 'done') {
+        tasksCtrl.setDoneItem(type, id);
+      } else if (type && type !== category) {
+        carvedItem = tasksCtrl.cutItem(type, id);
+        if (carvedItem) {
+          tasksCtrl.addItem(category, carvedItem.title, carvedItem.description);
+        }
+      }
+
+      ctrlRenderTasks();
+      ctrlupdateCounters();
+    }
   };
 
   // Устанавливает категорию в которую будут показываться и добавляться задачи
@@ -52,12 +97,12 @@ var controller = (function (tasksCtrl, UICtrl) {
     }
   };
 
-  var ctrlUpdateCount = function () {
+  var ctrlupdateCounters = function () {
     var data, totals;
     data = tasksCtrl.getData();
     totals = data.totals;
 
-    UICtrl.updateCount(totals);
+    UICtrl.updateCounters(totals);
   }
 
   // Рендерит задачи из localStorage
@@ -84,7 +129,7 @@ var controller = (function (tasksCtrl, UICtrl) {
       UICtrl.renderItems(data.allItems[category], category);
     }
 
-    ctrlUpdateCount();
+    ctrlupdateCounters();
   };
 
   // Показывает или скрывает описание задачи
@@ -111,13 +156,13 @@ var controller = (function (tasksCtrl, UICtrl) {
       }
 
     if (item) {
-      UICtrl.showHideDescription(item);
+      UICtrl.toggleDescription(item);
     }
   };
 
   // Добавляем задачу
   var ctrlAddItem = function (event) {
-    var input, type, newItem, data, doneCategory, validInput;
+    var input, type, newItem, data, doneCategory, validateInput;
     event.preventDefault();
 
     if (event.target.name === 'add') {
@@ -129,8 +174,8 @@ var controller = (function (tasksCtrl, UICtrl) {
         doneCategory = true;
       }
 
-      validInput = UICtrl.validInput(input.title)
-      if (validInput) {
+      validateInput = UICtrl.validateInput(input.title)
+      if (validateInput) {
         if (input.description.length === 0) {
           input.description = 'No description';
         }
@@ -140,7 +185,7 @@ var controller = (function (tasksCtrl, UICtrl) {
           UICtrl.addListItem(newItem, type);
         }
         UICtrl.closeModal();
-        ctrlUpdateCount();
+        ctrlupdateCounters();
       }
     }
   };
@@ -164,7 +209,7 @@ var controller = (function (tasksCtrl, UICtrl) {
 
         tasksCtrl.setDoneItem(type, id);
         ctrlRenderTasks();
-        ctrlUpdateCount();
+        ctrlupdateCounters();
       }
     }
   };
@@ -188,7 +233,7 @@ var controller = (function (tasksCtrl, UICtrl) {
 
         tasksCtrl.unsetDoneItem(type, id);
         ctrlRenderTasks();
-        ctrlUpdateCount();
+        ctrlupdateCounters();
       }
     }
   }
@@ -215,7 +260,7 @@ var controller = (function (tasksCtrl, UICtrl) {
 
   // Редактирует задачу
   var ctrlEditItem = function (event) {
-    var itemId, type, id, input, validInput;
+    var itemId, type, id, input, validateInput;
 
     if (event.target.name === 'save') {
       itemId = event.target.value;
@@ -225,8 +270,8 @@ var controller = (function (tasksCtrl, UICtrl) {
         id = parseInt(splitId[1]);
         input = UICtrl.getInput();
 
-        validInput = UICtrl.validInput(input.title);
-        if (validInput) {
+        validateInput = UICtrl.validateInput(input.title);
+        if (validateInput) {
           if (input.description.length === 0) {
             input.description = 'No description';
           }
@@ -254,7 +299,7 @@ var controller = (function (tasksCtrl, UICtrl) {
 
         tasksCtrl.deleteItem(type, id);
         UICtrl.deleteListItem(itemId);
-        ctrlUpdateCount();
+        ctrlupdateCounters();
       }
     }
   };

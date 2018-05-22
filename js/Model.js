@@ -19,18 +19,18 @@ window.tasksController = (function () {
   };
 
   // Записывает данные в localStorage
-  var setDataOnLocalStorage = function (dataObj) {
+  var saveData = function (dataObj) {
     localStorage.setItem('data', JSON.stringify(dataObj));
   }
 
   // Получаем данные из localStorage или создаем новые
-  var getDataIsLocalStorage = function () {
+  var getStorageData = function () {
     var oldData = localStorage.getItem('data');
 
     if (oldData) {
       return JSON.parse(oldData);
     } else {
-      return data = {
+      return {
         allItems: {
           new: [],
           inprogress: [],
@@ -46,7 +46,7 @@ window.tasksController = (function () {
     }
   };
 
-  var data = getDataIsLocalStorage();
+  var data = getStorageData();
 
   return {
     // Возврощает нужный элемент из массива с данными
@@ -75,11 +75,12 @@ window.tasksController = (function () {
 
     // Добавляет задачу
     addItem: function (type, tit, des) {
-        var newItem, id;
+        var items, newItem, id;
 
         // Генеруем уникальный ID
         if (data.allItems[type].length > 0) {
-          id = data.allItems[type][data.allItems[type].length - 1].id + 1;
+          items = data.allItems[type];
+          id = items[items.length - 1].id + 1;
         } else {
           id = 0;
         }
@@ -92,7 +93,7 @@ window.tasksController = (function () {
 
         data.allItems[type].push(newItem);
         data.totals[type] = data.allItems[type].length;
-        setDataOnLocalStorage(data);
+        saveData(data);
 
         return newItem;
     },
@@ -119,7 +120,7 @@ window.tasksController = (function () {
           return element;
         });
 
-        setDataOnLocalStorage(data);
+        saveData(data);
       }
     },
 
@@ -135,23 +136,38 @@ window.tasksController = (function () {
       if (index !== -1) {
         data.allItems[type].splice(index, 1);
         data.totals[type] = data.allItems[type].length;
-        setDataOnLocalStorage(data);
+        saveData(data);
       }
     },
 
     // Устанавливает текущую категорию для задач
     setCategory: function (name) {
         data.currentCat = name;
-        setDataOnLocalStorage(data);
+        saveData(data);
+    },
+
+    // Вырезает задачу из его категории и возврощает ее
+    cutItem: function (type, id) {
+      var curElement;
+
+      curElement = data.allItems[type].splice(id, 1);
+      data.totals[type] = data.allItems[type].length;
+
+      if (type === 'done') {
+        return curElement[0].element;
+      } else {
+        return curElement[0];
+      }
     },
 
     // Устанавливает элемент как DONE
     setDoneItem: function (type, idElem) {
-      var newItem, newId, ids, index, curElement;
+      var items, newItem, newId, ids, index, curElement;
 
       // Генеруем уникальный ID
       if (data.allItems['done'].length > 0) {
-        newId = data.allItems['done'][data.allItems['done'].length - 1].id + 1;
+        items = data.allItems['done'];
+        newId = items[items.length - 1].id + 1;
       } else {
         newId = 0;
       }
@@ -170,7 +186,7 @@ window.tasksController = (function () {
         data.allItems['done'].push(newItem);
         data.totals[type] = data.allItems[type].length;
         data.totals['done'] = data.allItems['done'].length;
-        setDataOnLocalStorage(data);
+        saveData(data);
       }
     },
 
@@ -189,7 +205,7 @@ window.tasksController = (function () {
         data.allItems[elem.oldType].push(elem.element);
         data.totals[type] = data.allItems[type].length;
         data.totals[elem.oldType] = data.allItems[elem.oldType].length;
-        setDataOnLocalStorage(data);
+        saveData(data);
       }
     },
 
